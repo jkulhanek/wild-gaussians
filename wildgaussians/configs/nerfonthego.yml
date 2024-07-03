@@ -1,0 +1,7 @@
+uncertainty_regularizer_weight: 0.5
+uncertainty_mode: "dino"
+appearance_enabled: false
+sh_degree: 3
+uncertainty_warmup_start: 2000
+uncertainty_protected_iters: 500
+num_sky_gaussians: 100000

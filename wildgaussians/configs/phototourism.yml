@@ -1,0 +1,22 @@
+iterations: 200000
+densify_from_iter: 4000
+densify_until_iter: 100000
+densification_interval: 400
+opacity_reset_interval: 15000
+position_lr_max_steps: 200000
+position_lr_final: 0.00000016
+position_lr_init: 0.000016
+scaling_lr: 0.0005
+sh_degree: 3
+
+uncertainty_warmup_start: 35000
+uncertainty_warmup_iters: 5000
+uncertainty_protected_iters: 1500
+uncertainty_regularizer_weight: 0.5
+uncertainty_mode: "dino"
+uncertainty_preserve_sky: false
+
+appearance_enabled: true
+appearance_n_fourier_freqs: 4
+
+num_sky_gaussians: 100000

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wildgaussians"
+version = "0.1.0"
+description = "Official code release for the WildGaussians paper"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text="MIT License"}
+dependencies = []
+
+[project.optional-dependencies]
+local = [
+    "torch>=2.0.0,<2.1.0",
+    "numpy<2.0.0",
+    "omegaconf",
+    "plyfile",
+    "tqdm",
+    "click",
+    "matplotlib",
+    "mediapy",
+    "requests",
+    "tensorboard",
+    "nerfbaselines>=1.0.1",
+]
+
+# Add entrypoints here
+[project.entry-points.'nerfbaselines.specs']
+wildgaussians = 'wildgaussians.wildgaussians_spec'
+
+[tool.setuptools.packages.find]
+include = ["wildgaussians*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yml", "*.yaml", "*.json"]
+
+[tool.ruff]
+ignore = ["E741", "E501"]
+
+[tool.pyright]
+ignore = ["E741", "E501"]
+exclude = [
+    "wildgaussians/dinov2.py", 
+    "submodules/**/*.py"
+]

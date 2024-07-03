@@ -1,0 +1,14 @@
+numpy==1.26.3
+omegaconf==2.3.0
+plyfile==1.0.3
+tqdm==4.66.4
+click==8.1.7
+matplotlib==3.9.0
+mediapy==1.2.2
+requests==2.28.1
+tensorboard==2.17.0
+setuptools==69.5.1
+
+--find-links https://download.pytorch.org/whl/cu118
+torch==2.0.1
+torchvision==0.15.2
