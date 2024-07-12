@@ -120,10 +120,11 @@ nerfbaselines render --checkpoint {checkpoint} --trajectory {trajectory file}
 ## Concurrent works
 There are several concurrent works that also aim to extend 3DGS to handle in-the-wild data:
 <ul>
-<li><a href="https://arxiv.org/abs/2406.10373v1">Wild-GS: Real-Time Novel View Synthesis from Unconstrained Photo Collections</li></a>
+<li><a href="https://arxiv.org/pdf/2406.10373v1">Wild-GS: Real-Time Novel View Synthesis from Unconstrained Photo Collections</li></a>
 <li><a href="https://arxiv.org/pdf/2403.15704">Gaussian in the Wild: 3D Gaussian Splatting for Unconstrained Image Collections</a></li>
 <li><a href="https://arxiv.org/pdf/2406.20055">SpotlessSplats: Ignoring Distractors in 3D Gaussian Splatting</a></li>
 <li><a href="https://arxiv.org/pdf/2403.10427">SWAG: Splatting in the Wild images with Appearance-conditioned Gaussians</a></li>
+<li><a href="https://arxiv.org/pdf/2406.02407">WE-GS: An In-the-wild Efficient 3D Gaussian Representation for Unconstrained Photo Collections</a></li>
 </ul>
 </p>
 </section>
