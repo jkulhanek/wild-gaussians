@@ -1712,7 +1712,7 @@ class WildGaussians(Method):
     @classmethod
     def get_method_info(cls) -> MethodInfo:
         return MethodInfo(
-            name="wildgaussians",
+            name="wild-gaussians",
             required_features=frozenset(("color", "points3D_xyz")),
             supported_camera_models=frozenset(("pinhole",)),
         )
@@ -1804,11 +1804,15 @@ class WildGaussians(Method):
                 }
             }
 
-    def render(self, cameras: Cameras, embeddings: Optional[Sequence[Optional[np.ndarray]]] = None) -> Iterable[RenderOutput]:
+    def render(self, cameras: Cameras, embeddings: Optional[Sequence[Optional[np.ndarray]]] = None, options=None, **kwargs) -> Iterable[RenderOutput]:
+        del kwargs
         device = self.model.xyz.device
         assert np.all(cameras.camera_types == camera_model_to_int("pinhole")), "Only pinhole cameras supported"
         sizes = cameras.image_sizes
         assert sizes is not None, "Image sizes are required for rendering"
+        render_depth = False
+        if options is not None and "depth" in options.get("outputs", ()):
+            render_depth = True
 
         self.model.eval()
         with torch.no_grad():
@@ -1823,7 +1827,7 @@ class WildGaussians(Method):
                                                   config=self.config, 
                                                   embedding=embedding, 
                                                   kernel_size=self.config.kernel_size, 
-                                                  render_depth=True)
+                                                  render_depth=render_depth)
                 image = out["render"]
                 image = torch.clamp(image, 0.0, 1.0).nan_to_num_(0.0)
 

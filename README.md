@@ -29,18 +29,13 @@ We demonstrate that WildGaussians matches the real-time rendering speed of 3DGS 
 ## Installation
 We offer two ways to install the method: local installation (through a conda environment) and installation from [NerfBaselines](https://jkulhanek.com/nerfbaselines), where multiple backends (conda,docker,apptainer) can be selected.
 
-### Install from NerfBaselines (recommended)
-The easiest way to install WildGaussians is by using [NerfBaselines](https://jkulhanek.com/nerfbaselines).
-First (if not already done), install NerfBaselines by running:
+### Use NerfBaselines
+WildGaussians is already included in the newest release of [NerfBaselines](https://jkulhanek.com/nerfbaselines).
+If you don't have NerfBaselines installed, you can install it by running:
 ```bash
 conda create -n nb python=3.11
 conda activate nb
-pip install nerfbaselines>=1.0.1
-```
-
-WildGaussians is then installed by running:
-```bash
-nerfbaselines install-method --spec https://raw.githubusercontent.com/jkulhanek/wild-gaussians/main/wildgaussians/wildgaussians_spec.py
+pip install nerfbaselines>=1.0.2
 ```
 
 ### Local installation
@@ -67,17 +62,17 @@ The checkpoints and predictions are available online at [https://huggingface.co/
 <li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/phototourism/sacre-coeur.zip?download=true">Photo Tourism/Sacre Coeur</a></li>
 <li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/phototourism/brandenburg-gate.zip?download=true">Photo Tourism/Brandenburg Gate</a></li>
 <br>
-<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/fountain.zip?download=true">NeRF On-the-go/Fountain</a></li>
-<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/mountain.zip?download=true">NeRF On-the-go/Mountain</a></li>
-<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/corner.zip?download=true">NeRF On-the-go/Corner</a></li>
-<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/patio.zip?download=true">NeRF On-the-go/Patio</a></li>
-<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/spot.zip?download=true">NeRF On-the-go/Spot</a></li>
-<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/patio-high.zip?download=true">NeRF On-the-go/Patio High</a></li>
+<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/fountain.zip?download=true">NeRF On-the-go/Fountain</a></li>
+<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/mountain.zip?download=true">NeRF On-the-go/Mountain</a></li>
+<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/corner.zip?download=true">NeRF On-the-go/Corner</a></li>
+<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/patio.zip?download=true">NeRF On-the-go/Patio</a></li>
+<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/spot.zip?download=true">NeRF On-the-go/Spot</a></li>
+<li><a href="https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/patio-high.zip?download=true">NeRF On-the-go/Patio High</a></li>
 </ul>
 
 In order to train/evaluate on the NeRF On-the-go dataset, please download the undistorted version
 from the following link:
-[https://huggingface.co/datasets/jkulhanek/nerfonthego-wg/tree/main](https://huggingface.co/datasets/jkulhanek/nerfonthego-wg/tree/main)
+[https://huggingface.co/datasets/jkulhanek/nerfonthego-undistorted/tree/main](https://huggingface.co/datasets/jkulhanek/nerfonthego-undistorted/tree/main)
 
 ## Interactive viewer
 To start the viewer and explore the trained models, run one of the following:
@@ -89,12 +84,12 @@ nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussian
 
 # NeRF on-the-go
 # NOTE: Optionally attach `--data {path to data}` to load the dataset (recommended)
-nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/fountain.zip/checkpoint
-nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/mountain.zip/checkpoint
-nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/corner.zip/checkpoint
-nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/patio.zip/checkpoint
-nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/spot.zip/checkpoint
-nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego/patio-high.zip/checkpoint
+nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/fountain.zip/checkpoint
+nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/mountain.zip/checkpoint
+nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/corner.zip/checkpoint
+nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/patio.zip/checkpoint
+nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/spot.zip/checkpoint
+nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussians/resolve/main/nerfonthego-undistorted/patio-high.zip/checkpoint
 ```
 
 ## Training

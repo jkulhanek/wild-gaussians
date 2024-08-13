@@ -192,13 +192,15 @@ def horizontal_half_dataset(dataset: Dataset, left: bool = True) -> Dataset:
     intrinsics = dataset["cameras"].intrinsics.copy()
     image_sizes = dataset["cameras"].image_sizes.copy()
     image_sizes[:, 0] //= 2
+    if left:
+        image_sizes[:, 0] = dataset["cameras"].image_sizes[:, 0] - image_sizes[:, 0]
     if not left:
         intrinsics[:, 2] -= image_sizes[:, 0]
     def get_slice(img, w):
         if left:
             return img[:, :w]
         else:
-            return img[:, w:]
+            return img[:, -w:]
     dataset = dataset.copy()
     dataset.update(cast(Dataset, dict(
         cameras=dataset["cameras"].replace(

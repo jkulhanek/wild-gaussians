@@ -8,7 +8,7 @@ else:
 WildGaussiansMethodSpec: MethodSpec = {
     "method": "wildgaussians.method:WildGaussians",
     "conda": {
-        "environment_name": "wildgaussians",
+        "environment_name": "wild-gaussians",
         "python_version": "3.11",
         "install_script": r"""
 git clone https://github.com/jkulhanek/wild-gaussians.git
@@ -24,17 +24,14 @@ pip install -e .
 """
     },
     "dataset_overrides": {
-        "phototourism": {
-            "config": "phototourism.yml",
-        },
-        "nerfonthego": {
-            "config": "nerfonthego.yml",
-        }
+        "phototourism": { "config": "phototourism.yml" },
+        "nerfonthego": { "config": "nerfonthego.yml" },
+        "nerfonthego-undistorted": { "config": "nerfonthego.yml" },
     },
 }
 
 try:
     from nerfbaselines.registry import register
-    register(WildGaussiansMethodSpec, name="wildgaussians")
+    register(WildGaussiansMethodSpec, name="wild-gaussians")
 except ImportError:
     pass

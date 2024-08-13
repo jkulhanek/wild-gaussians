@@ -250,15 +250,16 @@ def train_command(
     train_dataset = load_dataset_fn(data, "train", features, load_features=False)
     if dataset_type == "nerfonthego":
         dataset_not_official = "Please use the dataset provided for the WG paper"
-        assert os.path.exists(os.path.join(data, "info.json")), dataset_not_official
-        with open(os.path.join(data, "info.json"), "r") as f:
+        assert os.path.exists(os.path.join(data, "nb-info.json")), dataset_not_official
+        with open(os.path.join(data, "nb-info.json"), "r") as f:
             info = json.load(f)
-            assert info.pop("loader", None) != "colmap", dataset_not_official
+            assert info.pop("loader", None) == "colmap", dataset_not_official
             info.pop("loader_kwargs", None)
-            assert info["name"] == "nerfonthego", dataset_not_official
+            assert info["name"] == "nerfonthego-undistorted", dataset_not_official
             test_dataset["metadata"].update(info)
-        assert train_dataset["metadata"]["name"] == "nerfonthego"
-        assert test_dataset["metadata"]["name"] == "nerfonthego"
+            train_dataset["metadata"].update(info)
+        assert train_dataset["metadata"]["name"] == "nerfonthego-undistorted"
+        assert test_dataset["metadata"]["name"] == "nerfonthego-undistorted"
     if debug:
         train_dataset = datasets.dataset_index_select(train_dataset, slice(None, 8))
         test_dataset = datasets.dataset_index_select(test_dataset, slice(None, 8))

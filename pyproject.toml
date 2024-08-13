@@ -23,12 +23,8 @@ local = [
     "mediapy",
     "requests",
     "tensorboard",
-    "nerfbaselines>=1.0.1",
+    "nerfbaselines>=1.0.2",
 ]
-
-# Add entrypoints here
-[project.entry-points.'nerfbaselines.specs']
-wildgaussians = 'wildgaussians.wildgaussians_spec'
 
 [tool.setuptools.packages.find]
 include = ["wildgaussians*"]
