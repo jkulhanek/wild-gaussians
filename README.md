@@ -26,6 +26,9 @@ We demonstrate that WildGaussians matches the real-time rendering speed of 3DGS 
 </p>
 <br>
 
+> <b>:dizzy:	NEWS: WildGaussians is now integrated into <a href="https://jkulhanek.com/nerfbaselines">NerfBaselines</a>. Checkout the results here: https://jkulhanek.com/nerfbaselines/phototourism</b>
+
+
 ## Installation
 We offer two ways to install the method: local installation (through a conda environment) and installation from [NerfBaselines](https://jkulhanek.com/nerfbaselines), where multiple backends (conda,docker,apptainer) can be selected.
 
@@ -127,10 +130,9 @@ There are several concurrent works that also aim to extend 3DGS to handle in-the
 ## Acknowledgements
 We would like to thank Weining Ren for his help with the NeRF On-the-go dataset and code and Tobias Fischer and Xi Wang for fruitful discussions.
 This work was supported by the Czech Science Foundation (GAČR) EXPRO (grant no. 23-07973X)
-and by the Ministry of Education, Youth and Sports of the Czech Republic through the e-INFRA CZ (ID:90254).
+and by the Ministry of Education, Youth and Sports of the Czech Republic through the e-INFRA CZ (ID:90254). Jonas Kulhanek acknowledges travel support from the European Union’s Horizon 2020 research and innovation programme under ELISE Grant Agreement No 951847.
 The renderer is built on [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) and [Mip-Splatting](https://niujinshuchong.github.io/mip-splatting/).
-Please follow the license of 3DGS and Mip-Splatting.  
-We thank all the authors for their great work and released code.
+Please follow the license of 3DGS and Mip-Splatting. We thank all the authors for their great work and released code.
 
 ## Citation
 If you find our code or paper useful, please cite:
