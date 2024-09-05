@@ -1,3 +1,5 @@
+import hashlib
+import struct
 from typing import Optional, Iterable, Sequence, cast, Any, TypeVar
 import logging
 import urllib.request
@@ -49,6 +51,31 @@ def convert_image_dtype(image: np.ndarray, dtype) -> np.ndarray:
     if image.dtype != np.uint8 and dtype == np.uint8:
         return np.clip(image * 255.0, 0, 255).astype(np.uint8)
     raise ValueError(f"cannot convert image from {image.dtype} to {dtype}")
+
+
+def get_torch_checkpoint_sha(checkpoint_data):
+    sha = hashlib.sha256()
+    def update(d):
+        if type(d).__name__ == "Tensor" or type(d).__name__ == "Parameter":
+            sha.update(d.cpu().numpy().tobytes())
+        elif isinstance(d, dict):
+            items = sorted(d.items(), key=lambda x: x[0])
+            for k, v in items:
+                update(k)
+                update(v)
+        elif isinstance(d, (list, tuple)):
+            for v in d:
+                update(v)
+        elif isinstance(d, (int, float)):
+            sha.update(struct.pack("f", d))
+        elif isinstance(d, str):
+            sha.update(d.encode("utf8"))
+        elif d is None:
+            sha.update("(None)".encode("utf8"))
+        else:
+            raise ValueError(f"Unsupported type {type(d)}")
+    update(checkpoint_data)
+    return sha.hexdigest()
 
 
 def assert_not_none(value: Optional[T]) -> T:
@@ -1614,10 +1641,14 @@ class WildGaussians(Method):
         # Setup parameters
         load_state_dict = None
         self.config: Config = OmegaConf.structured(Config)
+        self._loaded_step = None
         if checkpoint is not None:
+            if not os.path.exists(checkpoint):
+                raise RuntimeError(f"Model directory {checkpoint} does not exist")
             logging.info(f"Loading config file {os.path.join(checkpoint, 'config.yaml')}")
             self.config = cast(Config, OmegaConf.merge(self.config, OmegaConf.load(os.path.join(checkpoint, "config.yaml"))))
-            state_dict_name = next(iter(x for x in os.listdir(checkpoint) if x.startswith("chkpnt-")))
+            self._loaded_step = self.step = sorted(int(x[x.find("-") + 1 : x.find(".")]) for x in os.listdir(str(self.checkpoint)) if x.startswith("chkpnt-"))[-1]
+            state_dict_name = f"chkpnt-{self._loaded_step}.pth"
             load_state_dict = torch.load(os.path.join(checkpoint, state_dict_name))
         else:
             if config_overrides is not None:
@@ -1699,15 +1730,6 @@ class WildGaussians(Method):
         self._viewpoint_stack = []
 
         self.model.compute_3D_filter(cameras=self.train_cameras)
-
-    @property
-    def _loaded_step(self):
-        loaded_step = None
-        if self.checkpoint is not None:
-            if not os.path.exists(self.checkpoint):
-                raise RuntimeError(f"Model directory {self.checkpoint} does not exist")
-            loaded_step = sorted(int(x[x.find("-") + 1 : x.find(".")]) for x in os.listdir(str(self.checkpoint)) if x.startswith("chkpnt-"))[-1]
-        return loaded_step
 
     @classmethod
     def get_method_info(cls) -> MethodInfo:
@@ -2008,5 +2030,12 @@ class WildGaussians(Method):
 
     def save(self, path):
         self.model.save_ply(os.path.join(path, "point_cloud.ply"))
-        torch.save(self.model.state_dict(), str(path) + f"/chkpnt-{self.step}.pth")
+        ckpt = self.model.state_dict()
+        ckpt_path = str(path) + f"/chkpnt-{self.step}.pth"
+        torch.save(ckpt, ckpt_path)
         OmegaConf.save(self.config, os.path.join(path, "config.yaml"))
+
+        # Note, since the torch checkpoint does not have deterministic SHA, we compute the SHA here.
+        sha = get_torch_checkpoint_sha(ckpt)
+        with open(ckpt_path + ".sha256", "w", encoding="utf8") as f:
+            f.write(sha)
