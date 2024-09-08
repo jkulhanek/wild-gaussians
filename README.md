@@ -38,7 +38,7 @@ If you don't have NerfBaselines installed, you can install it by running:
 ```bash
 conda create -n nb python=3.11
 conda activate nb
-pip install nerfbaselines>=1.0.2
+pip install nerfbaselines>=1.1.0
 ```
 
 ### Local installation

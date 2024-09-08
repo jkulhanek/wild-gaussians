@@ -1,7 +1,7 @@
 from typing import Union, Optional, overload
 import logging
 from pathlib import Path
-from ..types import Dataset, DatasetFeature, CameraModel, FrozenSet, NB_PREFIX
+from ..types import Dataset, DatasetFeature, CameraModel, FrozenSet, WG_PREFIX
 from ._common import dataset_load_features as dataset_load_features
 from ._common import dataset_index_select as dataset_index_select
 from ._common import new_dataset as new_dataset
@@ -51,7 +51,7 @@ def load_dataset(
     # If path is and external path, we download the dataset first
     if path.startswith("external://") and download_dataset_fn is not None:
         dataset = path.split("://", 1)[1]
-        path = Path(NB_PREFIX) / "datasets" / dataset
+        path = Path(WG_PREFIX) / "datasets" / dataset
         if not path.exists():
             download_dataset_fn(dataset, path)
         path = str(path)

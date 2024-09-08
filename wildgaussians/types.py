@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     import torch
 
 
-NB_PREFIX = os.path.expanduser(os.environ.get("NERFBASELINES_PREFIX", "~/.cache/nerfbaselines"))
+WG_PREFIX = os.path.expanduser(os.environ.get("WILD_GAUSSIANS_PREFIX", "~/.cache/wild-gaussians"))
 ColorSpace = Literal["srgb", "linear"]
 CameraModel = Literal["pinhole", "opencv", "opencv_fisheye", "full_opencv"]
 DatasetFeature = Literal["color", "points3D_xyz", "points3D_rgb"]
