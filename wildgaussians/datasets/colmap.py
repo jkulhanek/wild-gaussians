@@ -269,7 +269,7 @@ def load_colmap_dataset(path: Union[Path, str],
     # Convert to tensors
     camera_intrinsics = []
     camera_poses = []
-    camera_types = []
+    camera_models = []
     camera_distortion_params = []
     image_paths: List[str] = []
     image_names = []
@@ -280,10 +280,10 @@ def load_colmap_dataset(path: Union[Path, str],
     c2w: np.ndarray
     for image in images.values():
         camera: Camera = colmap_cameras[image.camera_id]
-        intrinsics, camera_type, distortion_params, (w, h) = _parse_colmap_camera_params(camera)
+        intrinsics, camera_model, distortion_params, (w, h) = _parse_colmap_camera_params(camera)
         camera_sizes.append(np.array((w, h), dtype=np.int32))
         camera_intrinsics.append(intrinsics)
-        camera_types.append(camera_type)
+        camera_models.append(camera_model)
         camera_distortion_params.append(distortion_params)
         image_names.append(image.name)
         image_paths.append(str(images_path / image.name))
@@ -316,7 +316,7 @@ def load_colmap_dataset(path: Union[Path, str],
     all_cameras = new_cameras(
         poses=np.stack(camera_poses, 0).astype(np.float32),
         intrinsics=np.stack(camera_intrinsics, 0).astype(np.float32),
-        camera_types=np.array(camera_types, dtype=np.int32),
+        camera_models=np.array(camera_models, dtype=np.int32),
         distortion_parameters=_padded_stack(camera_distortion_params).astype(np.float32),
         image_sizes=np.stack(camera_sizes, 0).astype(np.int32),
         nears_fars=nears_fars.astype(np.float32),
@@ -355,7 +355,7 @@ def load_colmap_dataset(path: Union[Path, str],
         sampling_mask_paths=None,
         image_paths_root=str(images_path),
         metadata={
-            "name": "colmap",
+            "name": None,
             "color_space": "srgb",
             "viewer_transform": viewer_transform,
             "viewer_initial_pose": viewer_pose,

@@ -98,7 +98,7 @@ def camera_project(cameras: GenericCameras[Tensor], xyz: Tensor) -> Tensor:
     uv = torch.where(uvw[..., 2:] > eps, uvw[..., :2] / uvw[..., 2:], torch.zeros_like(uvw[..., :2]))
 
     # We assume pinhole camera model in 3DGS anyway
-    # uv = _distort(cameras.camera_types, cameras.distortion_parameters, uv, xnp=xnp)
+    # uv = _distort(cameras.camera_models, cameras.distortion_parameters, uv, xnp=xnp)
 
     x, y = torch.moveaxis(uv, -1, 0)
 
@@ -1734,7 +1734,7 @@ class WildGaussians(Method):
     @classmethod
     def get_method_info(cls) -> MethodInfo:
         return MethodInfo(
-            name="wild-gaussians",
+            method_id="wild-gaussians",  # Will be filled by the registry
             required_features=frozenset(("color", "points3D_xyz")),
             supported_camera_models=frozenset(("pinhole",)),
         )
@@ -1753,7 +1753,7 @@ class WildGaussians(Method):
     ) -> Iterable[OptimizeEmbeddingsOutput]:
         device = self.model.xyz.device
         cameras = dataset["cameras"]
-        assert np.all(cameras.camera_types == camera_model_to_int("pinhole")), "Only pinhole cameras supported"
+        assert np.all(cameras.camera_models == camera_model_to_int("pinhole")), "Only pinhole cameras supported"
 
         self.model.eval()
         for i in range(len(cameras)):
@@ -1829,7 +1829,7 @@ class WildGaussians(Method):
     def render(self, cameras: Cameras, embeddings: Optional[Sequence[Optional[np.ndarray]]] = None, options=None, **kwargs) -> Iterable[RenderOutput]:
         del kwargs
         device = self.model.xyz.device
-        assert np.all(cameras.camera_types == camera_model_to_int("pinhole")), "Only pinhole cameras supported"
+        assert np.all(cameras.camera_models == camera_model_to_int("pinhole")), "Only pinhole cameras supported"
         sizes = cameras.image_sizes
         assert sizes is not None, "Image sizes are required for rendering"
         render_depth = False

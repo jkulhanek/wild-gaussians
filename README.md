@@ -99,12 +99,12 @@ nerfbaselines viewer --checkpoint https://huggingface.co/jkulhanek/wild-gaussian
 To start the training on the Photo Tourism dataset, run one of following commands:
 ```bash
 # Photo Tourism
-nerfbaselines train --method wildgaussians --data external://phototourism/trevi-fountain
-nerfbaselines train --method wildgaussians --data external://phototourism/sacre-coeur
-nerfbaselines train --method wildgaussians --data external://phototourism/brandenburg-gate
+nerfbaselines train --method wild-gaussians --data external://phototourism/trevi-fountain
+nerfbaselines train --method wild-gaussians --data external://phototourism/sacre-coeur
+nerfbaselines train --method wild-gaussians --data external://phototourism/brandenburg-gate
 
 # NeRF on-the-go
-nerfbaselines train --method wildgaussians --data {path to data}
+nerfbaselines train --method wild-gaussians --data {path to data}
 ```
 
 The training will also generate output artifacts containing the **test set predictions**, **checkpoint**, and **tensorboard logs**.

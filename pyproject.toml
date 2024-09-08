@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wildgaussians"
-version = "0.1.0"
+version = "0.2.0"
 description = "Official code release for the WildGaussians paper"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -23,7 +23,7 @@ local = [
     "mediapy",
     "requests",
     "tensorboard",
-    "nerfbaselines>=1.0.2",
+    "nerfbaselines>=1.1.0",
 ]
 
 [tool.setuptools.packages.find]

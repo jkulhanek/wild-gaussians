@@ -27,7 +27,6 @@ from .utils import (
     SetParamOptionType,
     MetricsAccumulator,
 )
-from .wildgaussians_spec import WildGaussiansMethodSpec
 from .method import WildGaussians
 
 
@@ -189,6 +188,17 @@ def eval_few_custom(method: WildGaussians, logger: Logger, dataset: Dataset, spl
                 )
 
 
+_CONFIG_OVERRIDES = {
+    "nerfonthego": {
+        "config": "nerfonthego.yml",
+    },
+    "phototourism": {
+        "config": "phototourism.yml",
+    },
+    "default": {},
+}
+
+
 @click.command("train")
 @click.option("--data", type=str, required=True)
 @click.option("--output", type=str, default=".")
@@ -218,7 +228,7 @@ def train_command(
 
     if config_overrides is not None and isinstance(config_overrides, (list, tuple)):
         config_overrides = dict(config_overrides)
-    config_overrides = {**WildGaussiansMethodSpec["dataset_overrides"].get(dataset_type, {}), **(config_overrides or {})}
+    config_overrides = {**_CONFIG_OVERRIDES[dataset_type], **(config_overrides or {})}
 
     # Load dataset
     method_info = WildGaussians.get_method_info()
@@ -255,11 +265,11 @@ def train_command(
             info = json.load(f)
             assert info.pop("loader", None) == "colmap", dataset_not_official
             info.pop("loader_kwargs", None)
-            assert info["name"] == "nerfonthego-undistorted", dataset_not_official
+            info_name = info.get("id", info.get("name"))
+            assert info_name == "nerfonthego-undistorted", dataset_not_official
+            info["id"] = info_name
             test_dataset["metadata"].update(info)
             train_dataset["metadata"].update(info)
-        assert train_dataset["metadata"]["name"] == "nerfonthego-undistorted"
-        assert test_dataset["metadata"]["name"] == "nerfonthego-undistorted"
     if debug:
         train_dataset = datasets.dataset_index_select(train_dataset, slice(None, 8))
         test_dataset = datasets.dataset_index_select(test_dataset, slice(None, 8))
@@ -317,6 +327,8 @@ def train_command(
                 shutil.rmtree(path)
                 logging.warning(f"removed existing checkpoint at {path}")
             method.save(str(path))
+            with open(path / "nb-info.json", "w") as f:
+                json.dump({ "method": "wild-gaussians" }, f)
             logging.info(f"checkpoint saved at step={step}")
 
         if step in eval_few_iters:
@@ -352,6 +364,8 @@ def train_command(
             path.unlink()
             logging.warning(f"removed existing checkpoint at {path}")
         method.save(str(path))
+        with open(path / "nb-info.json", "w") as f:
+            json.dump({ "method": "wild-gaussians" }, f)
         logging.info(f"checkpoint saved at step={step}")
 
 

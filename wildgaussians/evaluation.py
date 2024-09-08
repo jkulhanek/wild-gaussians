@@ -575,11 +575,11 @@ def trajectory_get_cameras(trajectory: Trajectory) -> Cameras:
         raise NotImplementedError("Only pinhole camera model is supported")
     poses = np.stack([x["pose"] for x in trajectory["frames"]])
     intrinsics = np.stack([x["intrinsics"] for x in trajectory["frames"]])
-    camera_types = np.array([camera_model_to_int(trajectory["camera_model"])]*len(poses), dtype=np.int32)
+    camera_models = np.array([camera_model_to_int(trajectory["camera_model"])]*len(poses), dtype=np.int32)
     image_sizes = np.array([list(trajectory["image_size"])]*len(poses), dtype=np.int32)
     return new_cameras(poses=poses, 
                        intrinsics=intrinsics, 
-                       camera_types=camera_types, 
+                       camera_models=camera_models, 
                        image_sizes=image_sizes,
                        distortion_parameters=np.zeros((len(poses), 0), dtype=np.float32),
                        nears_fars=None, 

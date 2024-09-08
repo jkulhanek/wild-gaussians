@@ -102,7 +102,7 @@ class GenericCameras(Protocol[TTensor_co]):
         ...
 
     @property
-    def camera_types(self) -> TTensor_co:
+    def camera_models(self) -> TTensor_co:
         """Camera types, [N]"""
         ...
 
@@ -163,7 +163,7 @@ class GenericCamerasImpl(Generic[TTensor_co]):
     poses: TTensor_co  # [N, (R, t)]
     intrinsics: TTensor_co  # [N, (fx,fy,cx,cy)]
 
-    camera_types: TTensor_co  # [N]
+    camera_models: TTensor_co  # [N]
     distortion_parameters: TTensor_co  # [N, num_params]
     image_sizes: TTensor_co  # [N, 2]
 
@@ -181,7 +181,7 @@ class GenericCamerasImpl(Generic[TTensor_co]):
         return type(self)(
             poses=self.poses[index],
             intrinsics=self.intrinsics[index],
-            camera_types=self.camera_types[index],
+            camera_models=self.camera_models[index],
             distortion_parameters=self.distortion_parameters[index],
             image_sizes=self.image_sizes[index],
             nears_fars=self.nears_fars[index] if self.nears_fars is not None else None,
@@ -193,7 +193,7 @@ class GenericCamerasImpl(Generic[TTensor_co]):
         assert (self.nears_fars is None) == (value.nears_fars is None), "Either both or none of the cameras must have nears and fars"
         self.poses[index] = value.poses
         self.intrinsics[index] = value.intrinsics
-        self.camera_types[index] = value.camera_types
+        self.camera_models[index] = value.camera_models
         self.distortion_parameters[index] = value.distortion_parameters
         self.image_sizes[index] = value.image_sizes
         if self.nears_fars is not None:
@@ -219,7 +219,7 @@ class GenericCamerasImpl(Generic[TTensor_co]):
         return cls(
             poses=xnp.concatenate([v.poses for v in values]),
             intrinsics=xnp.concatenate([v.intrinsics for v in values]),
-            camera_types=xnp.concatenate([v.camera_types for v in values]),
+            camera_models=xnp.concatenate([v.camera_models for v in values]),
             distortion_parameters=xnp.concatenate([v.distortion_parameters for v in values]),
             image_sizes=xnp.concatenate([cast(TTensor_co, v.image_sizes) for v in values]),
             nears_fars=nears_fars,
@@ -233,7 +233,7 @@ class GenericCamerasImpl(Generic[TTensor_co]):
         return GenericCamerasImpl[TTensor](
             poses=fn(self.poses, "poses"),
             intrinsics=fn(self.intrinsics, "intrinsics"),
-            camera_types=fn(self.camera_types, "camera_types"),
+            camera_models=fn(self.camera_models, "camera_models"),
             distortion_parameters=fn(self.distortion_parameters, "distortion_parameters"),
             image_sizes=fn(self.image_sizes, "image_sizes"),
             nears_fars=fn(cast(TTensor_co, self.nears_fars), "nears_fars") if self.nears_fars is not None else None,
@@ -245,7 +245,7 @@ def new_cameras(
     *,
     poses: np.ndarray,
     intrinsics: np.ndarray,
-    camera_types: np.ndarray,
+    camera_models: np.ndarray,
     distortion_parameters: np.ndarray,
     image_sizes: np.ndarray,
     nears_fars: Optional[np.ndarray] = None,
@@ -254,7 +254,7 @@ def new_cameras(
     return GenericCamerasImpl[np.ndarray](
         poses=poses,
         intrinsics=intrinsics,
-        camera_types=camera_types,
+        camera_models=camera_models,
         distortion_parameters=distortion_parameters,
         image_sizes=image_sizes,
         nears_fars=nears_fars,

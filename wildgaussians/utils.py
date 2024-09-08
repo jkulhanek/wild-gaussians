@@ -611,8 +611,9 @@ def new_nb_info(train_dataset_metadata,
         evaluation_protocol = dataset_metadata.get("evaluation_protocol", evaluation_protocol)
     if not isinstance(evaluation_protocol, str):
         evaluation_protocol = evaluation_protocol.get_name()
+    method_id = model_info.get("method_id", model_info.get("name"))
     return {
-        "method": model_info["name"],
+        "method": method_id,
         "num_iterations": model_info["num_iterations"],
         "total_train_time": round(total_train_time, 5) if total_train_time is not None else None,
         "resources_utilization": resources_utilization_info,
