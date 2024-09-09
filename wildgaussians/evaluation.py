@@ -16,7 +16,7 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from .datasets import new_dataset
+from .datasets import new_dataset, dataset_index_select
 from .utils import (
     read_image, 
     convert_image_dtype, 
@@ -405,8 +405,11 @@ def evaluate(predictions: str,
 
             # Evaluate the prediction
             with tqdm(desc=description, dynamic_ncols=True, total=len(relpaths)) as progress:
-                def collect_metrics_lists(iterable: Iterable[Dict[str, T]]) -> Iterable[Dict[str, T]]:
-                    for data in iterable:
+                def collect_metrics_lists():
+                    for i, pred in enumerate(read_predictions()):
+                        dataset_slice = dataset_index_select(dataset, [i])
+                        data = evaluation_protocol.evaluate(pred, dataset_slice)
+
                         for k, v in data.items():
                             if k not in metrics_lists:
                                 metrics_lists[k] = []
@@ -417,9 +420,7 @@ def evaluate(predictions: str,
                             progress.set_postfix(psnr=f"{psnr_val:.4f}")
                         yield data
 
-                metrics = evaluation_protocol.accumulate_metrics(
-                    collect_metrics_lists(evaluation_protocol.evaluate(read_predictions(), dataset))
-                )
+                metrics = evaluation_protocol.accumulate_metrics(collect_metrics_lists())
 
         # If output is specified, write the results to a file
         if os.path.exists(str(output)):
@@ -440,23 +441,24 @@ class DefaultEvaluationProtocol(EvaluationProtocol):
     def __init__(self):
         pass
 
-    def render(self, method: Method, dataset: Dataset) -> Iterable[RenderOutput]:
-        yield from method.render(dataset["cameras"])
+    def render(self, method: Method, dataset: Dataset) -> RenderOutput:
+        return method.render(dataset["cameras"].item())
 
     def get_name(self):
         return self._name
 
-    def evaluate(self, predictions: Iterable[RenderOutput], dataset: Dataset) -> Iterable[Dict[str, Union[float, int]]]:
+    def evaluate(self, predictions: RenderOutput, dataset: Dataset) -> Dict[str, Union[float, int]]:
+        assert len(dataset["images"]) == 1, "Only single image evaluation is supported"
         background_color = dataset["metadata"].get("background_color")
         color_space = dataset["metadata"]["color_space"]
-        for i, prediction in enumerate(predictions):
-            pred = prediction["color"]
-            gt = dataset["images"][i]
-            pred = image_to_srgb(pred, np.uint8, color_space=color_space, background_color=background_color)
-            gt = image_to_srgb(gt, np.uint8, color_space=color_space, background_color=background_color)
-            pred_f = convert_image_dtype(pred, np.float32)
-            gt_f = convert_image_dtype(gt, np.float32)
-            yield compute_metrics(pred_f[None], gt_f[None], run_lpips_vgg=self._lpips_vgg, reduce=True)
+
+        pred = predictions["color"]
+        gt = dataset["images"][0]
+        pred = image_to_srgb(pred, np.uint8, color_space=color_space, background_color=background_color)
+        gt = image_to_srgb(gt, np.uint8, color_space=color_space, background_color=background_color)
+        pred_f = convert_image_dtype(pred, np.float32)
+        gt_f = convert_image_dtype(gt, np.float32)
+        return compute_metrics(pred_f[None], gt_f[None], run_lpips_vgg=self._lpips_vgg, reduce=True)
 
     def accumulate_metrics(self, metrics: Iterable[Dict[str, Union[float, int]]]) -> Dict[str, Union[float, int]]:
         acc = {}
@@ -502,7 +504,10 @@ def render_all_images(
 
     with tqdm(desc=description, total=len(dataset["image_paths"]), dynamic_ncols=True) as progress:
         for val in save_predictions(output,
-                                    evaluation_protocol.render(method, dataset),
+                                    (
+                                        evaluation_protocol.render(method, dataset_index_select(dataset, [i])) 
+                                         for i in range(len(dataset["image_paths"]))
+                                    ),
                                     dataset=dataset,
                                     nb_info=nb_info):
             progress.update(1)
@@ -527,7 +532,7 @@ def render_frames(
     expected_scene_scale = nb_info.get("expected_scene_scale") if nb_info is not None else None
 
     def _predict_all(allow_transparency=True):
-        predictions = render(cameras, embeddings=embeddings)
+        predictions = (render(cam, options={"embedding": embeddings[i] if embeddings is not None else None}) for i, cam in enumerate(cameras))
         for i, pred in enumerate(tqdm(predictions, desc=description, total=len(cameras), dynamic_ncols=True)):
             pred_image = image_to_srgb(pred["color"], np.uint8, color_space=color_space, allow_alpha=allow_transparency, background_color=background_color)
             if output_type == "color":

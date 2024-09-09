@@ -117,6 +117,11 @@ def eval_all(method: Method, logger: Logger, dataset: Dataset, *, output: str, s
                          step=step)
 
 
+def _slice_dataset(dataset: Dataset):
+    for i in range(len(dataset["cameras"])):
+        yield datasets.dataset_index_select(dataset, [i])
+
+
 
 def eval_few_custom(method: WildGaussians, logger: Logger, dataset: Dataset, split: str, step: int, evaluation_protocol: EvaluationProtocol):
     disable_tqdm = False
@@ -134,14 +139,16 @@ def eval_few_custom(method: WildGaussians, logger: Logger, dataset: Dataset, spl
         # dataset = datasets.dataset_index_select(dataset, slice(None, 1))
         optimization_dataset = horizontal_half_dataset(dataset, left=True)
         embeddings = []
-        for i, optim in tqdm(enumerate(method.optimize_embeddings(optimization_dataset)), desc="optimizing embeddings", total=len(dataset["cameras"]), disable=disable_tqdm):
+        
+        for i, dataslice in tqdm(enumerate(_slice_dataset(optimization_dataset)), desc="optimizing embeddings", total=len(dataset["cameras"]), disable=disable_tqdm):
+            optim = method.optimize_embedding(dataslice)
             embeddings.append(optim["embedding"])
             if optim_metrics is None and "metrics" in optim:
                 optim_metrics = optim["metrics"]
 
         evaluation_dataset = horizontal_half_dataset(dataset, left=False)
         images_f = [image_to_srgb(img, dtype=np.float32) for img in evaluation_dataset["images"]]
-        for i, result_no_optim in tqdm(enumerate(method.render(evaluation_dataset["cameras"])), desc="rendering", total=len(dataset["cameras"]), disable=disable_tqdm):
+        for i, result_no_optim in tqdm(enumerate(method.render(cam) for cam in evaluation_dataset["cameras"]), desc="rendering", total=len(dataset["cameras"]), disable=disable_tqdm):
             metrics.update({
                 k + "-nopt": v for k, v in compute_metrics(image_to_srgb(result_no_optim["color"], dtype=np.float32), images_f[i]).items()
             })
@@ -154,7 +161,7 @@ def eval_few_custom(method: WildGaussians, logger: Logger, dataset: Dataset, spl
 
     result_optim = None
     renders = []
-    for i, result_optim in tqdm(enumerate(method.render(evaluation_dataset["cameras"], embeddings=embeddings)), desc="rendering", total=len(dataset["cameras"]), disable=disable_tqdm):
+    for i, result_optim in tqdm(enumerate(method.render(cam, options={"embedding": embeddings[i] if embeddings is not None else None}) for i, cam in enumerate(evaluation_dataset["cameras"])), desc="rendering", total=len(dataset["cameras"]), disable=disable_tqdm):
         metrics.update(compute_metrics(image_to_srgb(result_optim["color"], dtype=np.float32), images_f[i]))
         renders.append(image_to_srgb(result_optim["color"], dtype=np.uint8))
         eval_few_rows[i].append(image_to_srgb(result_optim["color"], dtype=np.uint8))

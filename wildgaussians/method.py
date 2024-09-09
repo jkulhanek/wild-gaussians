@@ -1,6 +1,6 @@
 import hashlib
 import struct
-from typing import Optional, Iterable, Sequence, cast, Any, TypeVar
+from typing import Optional, cast, Any, TypeVar
 import logging
 import urllib.request
 import io
@@ -202,6 +202,9 @@ def dino_downsample(x, max_size=None):
 
 
 class UncertaintyModel(nn.Module):
+    img_norm_mean: Tensor
+    img_norm_std: Tensor
+
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
@@ -905,6 +908,8 @@ class GaussianModel(nn.Module):
     opacities: nn.Parameter
     xyz_grad: Tensor
     filter_3D: Tensor
+    denom: Tensor
+    max_radii2D: Tensor
 
     features_rest: Optional[nn.Parameter]
     embeddings: Optional[nn.Parameter]
@@ -912,6 +917,7 @@ class GaussianModel(nn.Module):
     appearance_mlp: Optional[nn.Module]
 
     spatial_lr_scale: Tensor
+    active_sh_degree: Tensor
 
     # Setup functions
     scaling_activation = staticmethod(torch.exp)
@@ -1093,7 +1099,7 @@ class GaussianModel(nn.Module):
                             stored_state["exp_avg"] = torch.zeros_like(new_tensor)
                             stored_state["exp_avg_sq"] = torch.zeros_like(new_tensor)
                             del self.optimizer.state[group['params'][0]]
-                            self.optimizer.state[new_param] = stored_state
+                            self.optimizer.state[new_param] = stored_state  # type: ignore
                         group["params"][0] = new_param
                         break
                 else:
@@ -1746,123 +1752,118 @@ class WildGaussians(Method):
             loaded_step=self._loaded_step,
         )
 
-    def optimize_embeddings(
+    def optimize_embedding(
         self, 
-        dataset: Dataset,
-        embeddings: Optional[Sequence[np.ndarray]] = None
-    ) -> Iterable[OptimizeEmbeddingsOutput]:
+        dataset: Dataset, *,
+        embedding: Optional[np.ndarray] = None
+    ) -> OptimizeEmbeddingsOutput:
         device = self.model.xyz.device
-        cameras = dataset["cameras"]
-        assert np.all(cameras.camera_models == camera_model_to_int("pinhole")), "Only pinhole cameras supported"
+        camera = dataset["cameras"].item()
+        assert camera.camera_models == camera_model_to_int("pinhole"), "Only pinhole cameras supported"
 
         self.model.eval()
-        for i in range(len(cameras)):
-            losses, psnrs, mses = [], [], []
+        i = 0
+        losses, psnrs, mses = [], [], []
 
-            appearance_embedding = (
-                torch.from_numpy(embeddings[i]).to(device) if embeddings is not None else self.model.get_embedding(None)
-            )
-            if self.config.appearance_enabled:
-                appearance_embedding_param = torch.nn.Parameter(assert_not_none(appearance_embedding).requires_grad_(True))
-                optimizer = torch.optim.Adam([appearance_embedding_param], lr=self.config.appearance_embedding_optim_lr)
-                
-                gt_image = torch.tensor(convert_image_dtype(dataset["images"][i], np.float32), dtype=torch.float32, device=device).permute(2, 0, 1)
-                gt_mask = torch.tensor(convert_image_dtype(dataset["sampling_masks"][i], np.float32), dtype=torch.float32, device=device)[..., None].permute(2, 0, 1) if dataset["sampling_masks"] is not None else None
+        appearance_embedding = (
+            torch.from_numpy(embedding).to(device) if embedding is not None else self.model.get_embedding(None)
+        )
+        if self.config.appearance_enabled:
+            appearance_embedding_param = torch.nn.Parameter(assert_not_none(appearance_embedding).requires_grad_(True))
+            optimizer = torch.optim.Adam([appearance_embedding_param], lr=self.config.appearance_embedding_optim_lr)
+            
+            gt_image = torch.tensor(convert_image_dtype(dataset["images"][i], np.float32), dtype=torch.float32, device=device).permute(2, 0, 1)
+            gt_mask = torch.tensor(convert_image_dtype(dataset["sampling_masks"][i], np.float32), dtype=torch.float32, device=device)[..., None].permute(2, 0, 1) if dataset["sampling_masks"] is not None else None
 
-                with torch.enable_grad():
-                    app_optim_type = self.config.appearance_optim_type
-                    loss_mult = None
-                    if app_optim_type.endswith("-scaled"):
-                        app_optim_type = app_optim_type[:-7]
-                        if self.model.uncertainty_model is not None:
-                            _, _, loss_mult = self.model.uncertainty_model.get_loss(gt_image, gt_image)
-                            loss_mult = (loss_mult > 1).to(dtype=loss_mult.dtype)
-                    for _ in range(self.config.appearance_embedding_optim_iters):
-                        optimizer.zero_grad()
-                        image = self.model._render_internal(cameras[i], config=self.config, embedding=appearance_embedding_param, kernel_size=self.config.kernel_size)["render"]
-                        if gt_mask is not None:
-                            image = scale_grads(image, gt_mask.float())
-                        if loss_mult is not None:
-                            image = scale_grads(image, loss_mult)
+            with torch.enable_grad():
+                app_optim_type = self.config.appearance_optim_type
+                loss_mult = None
+                if app_optim_type.endswith("-scaled"):
+                    app_optim_type = app_optim_type[:-7]
+                    if self.model.uncertainty_model is not None:
+                        _, _, loss_mult = self.model.uncertainty_model.get_loss(gt_image, gt_image)
+                        loss_mult = (loss_mult > 1).to(dtype=loss_mult.dtype)
+                for _ in range(self.config.appearance_embedding_optim_iters):
+                    optimizer.zero_grad()
+                    image = self.model._render_internal(camera, config=self.config, embedding=appearance_embedding_param, kernel_size=self.config.kernel_size)["render"]
+                    if gt_mask is not None:
+                        image = scale_grads(image, gt_mask.float())
+                    if loss_mult is not None:
+                        image = scale_grads(image, loss_mult)
 
-                        mse = torch.nn.functional.mse_loss(image, gt_image)
+                    mse = torch.nn.functional.mse_loss(image, gt_image)
 
 
-                        if app_optim_type == "mse":
-                            loss = mse
-                        elif app_optim_type == "dssim+l1":
-                            Ll1 = torch.nn.functional.l1_loss(image, gt_image)
-                            ssim_value = ssim(image, gt_image, size_average=True)
-                            loss = (
-                                (1.0 - self.config.lambda_dssim) * Ll1 +
-                                self.config.lambda_dssim * (1.0 - ssim_value)
-                            )
-                        else:
-                            raise ValueError(f"Unknown appearance optimization type {app_optim_type}")
-                        loss.backward()
-                        # TODO: use uncertainty here as well
-                        # print(float(appearance_embedding_param.grad.abs().max().cpu()), float(mse.cpu()))
-                        optimizer.step()
+                    if app_optim_type == "mse":
+                        loss = mse
+                    elif app_optim_type == "dssim+l1":
+                        Ll1 = torch.nn.functional.l1_loss(image, gt_image)
+                        ssim_value = ssim(image, gt_image, size_average=True)
+                        loss = (
+                            (1.0 - self.config.lambda_dssim) * Ll1 +
+                            self.config.lambda_dssim * (1.0 - ssim_value)
+                        )
+                    else:
+                        raise ValueError(f"Unknown appearance optimization type {app_optim_type}")
+                    loss.backward()
+                    # TODO: use uncertainty here as well
+                    # print(float(appearance_embedding_param.grad.abs().max().cpu()), float(mse.cpu()))
+                    optimizer.step()
 
-                        losses.append(loss.detach().cpu().item())
-                        mses.append(mse.detach().cpu().item())
-                        psnrs.append(20 * math.log10(1.0) - 10 * torch.log10(mse).detach().cpu().item())
+                    losses.append(loss.detach().cpu().item())
+                    mses.append(mse.detach().cpu().item())
+                    psnrs.append(20 * math.log10(1.0) - 10 * torch.log10(mse).detach().cpu().item())
 
-                if self.model.optimizer is not None:
-                    self.model.optimizer.zero_grad()
-                appearance_embedding = appearance_embedding_param
-            embedding_np = appearance_embedding.detach().cpu().numpy() if appearance_embedding is not None else None
-            render_output = None
-            for render_output in self.render(cameras[i:i+1], [embedding_np] if embedding_np is not None else None):
-                pass
-            assert render_output is not None
-            yield {
-                "embedding": assert_not_none(embedding_np),
-                "render_output": render_output,
+            if self.model.optimizer is not None:
+                self.model.optimizer.zero_grad()
+            appearance_embedding = appearance_embedding_param
+            embedding_np = appearance_embedding_param.detach().cpu().numpy()
+            return {
+                "embedding": embedding_np,
                 "metrics": {
                     "psnr": psnrs,
                     "mse": mses,
                     "loss": losses,
                 }
             }
+        else:
+            raise NotImplementedError("Trying to optimize embedding with appearance_enabled=False")
 
-    def render(self, cameras: Cameras, embeddings: Optional[Sequence[Optional[np.ndarray]]] = None, options=None, **kwargs) -> Iterable[RenderOutput]:
+    def render(self, camera: Cameras, options=None, **kwargs) -> RenderOutput:
         del kwargs
+        camera = camera.item()
         device = self.model.xyz.device
-        assert np.all(cameras.camera_models == camera_model_to_int("pinhole")), "Only pinhole cameras supported"
-        sizes = cameras.image_sizes
-        assert sizes is not None, "Image sizes are required for rendering"
+        assert camera.camera_models == camera_model_to_int("pinhole"), "Only pinhole cameras supported"
         render_depth = False
         if options is not None and "depth" in options.get("outputs", ()):
             render_depth = True
 
         self.model.eval()
         with torch.no_grad():
-            global_i = 0
-            for i in range(len(cameras)):
-                embedding = (
-                    torch.from_numpy(embeddings[i])
-                    if (embeddings is not None and embeddings[i] is not None) else self.model.get_embedding(None)
-                )
-                embedding = embedding.to(device) if embedding is not None else None
-                out = self.model._render_internal(cameras[i], 
-                                                  config=self.config, 
-                                                  embedding=embedding, 
-                                                  kernel_size=self.config.kernel_size, 
-                                                  render_depth=render_depth)
-                image = out["render"]
-                image = torch.clamp(image, 0.0, 1.0).nan_to_num_(0.0)
+            _np_embedding = (options or {}).get("embedding", None)
+            embedding = (
+                torch.from_numpy(_np_embedding)
+                if _np_embedding is not None else self.model.get_embedding(None)
+            )
+            del _np_embedding
+            embedding = embedding.to(device) if embedding is not None else None
+            out = self.model._render_internal(camera, 
+                                              config=self.config, 
+                                              embedding=embedding, 
+                                              kernel_size=self.config.kernel_size, 
+                                              render_depth=render_depth)
+            image = out["render"]
+            image = torch.clamp(image, 0.0, 1.0).nan_to_num_(0.0)
 
-                global_i += int(sizes[i].prod(-1))
-                color = image.detach().permute(1, 2, 0).cpu().numpy()
+            color = image.detach().permute(1, 2, 0).cpu().numpy()
 
-                ret_out: RenderOutput = {
-                    "color": color,
-                    "accumulation": out["accumulation"].squeeze(-1).detach().cpu().numpy(),
-                }
-                if out.get("depth") is not None:
-                    ret_out["depth"] = out["depth"].detach().cpu().numpy()
-                yield ret_out
+            ret_out: RenderOutput = {
+                "color": color,
+                "accumulation": out["accumulation"].squeeze(-1).detach().cpu().numpy(),
+            }
+            if out.get("depth") is not None:
+                ret_out["depth"] = out["depth"].detach().cpu().numpy()
+            return ret_out
 
     def _get_viewpoint_stack(self, step: int):
         assert self.train_cameras is not None, "Method not initialized"

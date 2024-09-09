@@ -220,31 +220,28 @@ class NerfWEvaluationProtocol(EvaluationProtocol):
     def get_name(self):
         return "nerfw"
 
-    def render(self, method: Method, dataset: Dataset) -> Iterable[RenderOutput]:
+    def render(self, method: Method, dataset: Dataset) -> RenderOutput:
         optimization_dataset = horizontal_half_dataset(dataset, left=True)
-        optim_iterator = method.optimize_embeddings(optimization_dataset)
-        if optim_iterator is None:
-            # Method does not support optimization
-            for pred in method.render(dataset["cameras"]):
-                yield pred
-            return
+        embedding = None
+        try:
+            pred = method.optimize_embedding(optimization_dataset)
+            embedding = pred["embedding"]
+        except NotImplementedError:
+            pass
 
-        for i, optim_result in enumerate(optim_iterator):
-            # Render with the optimzied result
-            for pred in method.render(dataset["cameras"][i:i+1], embeddings=[optim_result["embedding"]]):
-                yield pred
+        return method.render(dataset["cameras"].item(), options={"embedding": embedding})
 
-    def evaluate(self, predictions: Iterable[RenderOutput], dataset: Dataset) -> Iterable[Dict[str, Union[float, int]]]:
-        for i, prediction in enumerate(predictions):
-            gt = dataset["images"][i]
-            color = prediction["color"]
+    def evaluate(self, predictions: RenderOutput, dataset: Dataset) -> Dict[str, Union[float, int]]:
+        assert len(dataset["images"]) == 1, "Only single image evaluation is supported"
+        gt = dataset["images"][0]
+        color = predictions["color"]
 
-            background_color = dataset["metadata"].get("background_color", None)
-            color_srgb = image_to_srgb(color, np.uint8, color_space="srgb", background_color=background_color)
-            gt_srgb = image_to_srgb(gt, np.uint8, color_space="srgb", background_color=background_color)
-            w = gt_srgb.shape[1]
-            metrics = self._compute_metrics(color_srgb[:, (w//2):], gt_srgb[:, (w//2):])
-            yield metrics
+        background_color = dataset["metadata"].get("background_color", None)
+        color_srgb = image_to_srgb(color, np.uint8, color_space="srgb", background_color=background_color)
+        gt_srgb = image_to_srgb(gt, np.uint8, color_space="srgb", background_color=background_color)
+        w = gt_srgb.shape[1]
+        metrics = self._compute_metrics(color_srgb[:, (w//2):], gt_srgb[:, (w//2):])
+        return metrics
 
     def accumulate_metrics(self, metrics: Iterable[Dict[str, Union[float, int]]]) -> Dict[str, Union[float, int]]:
         acc = {}
