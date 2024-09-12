@@ -38,7 +38,7 @@ If you don't have NerfBaselines installed, you can install it by running:
 ```bash
 conda create -n nb python=3.11
 conda activate nb
-pip install nerfbaselines>=1.1.0
+pip install nerfbaselines>=1.2.0
 ```
 
 ### Local installation
@@ -53,7 +53,7 @@ conda install -y --override-channels -c nvidia/label/cuda-11.8.0 cuda-toolkit
 conda env config vars set NERFBASELINES_BACKEND=python
 pip install --upgrade pip
 pip install -r requirements.txt
-pip install nerfbaselines>=1.0.1
+pip install nerfbaselines>=1.2.0
 pip install -e ./submodules/diff-gaussian-rasterization ./submodules/simple-knn
 pip install -e .
 ```
