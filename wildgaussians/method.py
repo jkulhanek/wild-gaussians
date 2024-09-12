@@ -35,7 +35,7 @@ from .types import (
     Dataset, 
     Cameras, 
     GenericCameras,
-    OptimizeEmbeddingsOutput,
+    OptimizeEmbeddingOutput,
 )
 
 T = TypeVar("T")
@@ -1756,7 +1756,7 @@ class WildGaussians(Method):
         self, 
         dataset: Dataset, *,
         embedding: Optional[np.ndarray] = None
-    ) -> OptimizeEmbeddingsOutput:
+    ) -> OptimizeEmbeddingOutput:
         device = self.model.xyz.device
         camera = dataset["cameras"].item()
         assert camera.camera_models == camera_model_to_int("pinhole"), "Only pinhole cameras supported"
