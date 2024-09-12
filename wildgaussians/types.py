@@ -289,20 +289,20 @@ class RenderOutput(TypedDict, total=False):
     accumulation: np.ndarray  # [h w]
 
 
-class OptimizeEmbeddingsOutput(TypedDict):
+class OptimizeEmbeddingOutput(TypedDict):
     embedding: np.ndarray
     render_output: RenderOutput
     metrics: NotRequired[Dict[str, Sequence[float]]]
 
 
 class MethodInfo(TypedDict, total=False):
-    name: Required[str]
+    method_id: Required[str]
     required_features: FrozenSet[DatasetFeature]
     supported_camera_models: FrozenSet
 
 
 class ModelInfo(TypedDict, total=False):
-    name: Required[str]
+    method_id: Required[str]
     num_iterations: Required[int]
     loaded_step: Optional[int]
     loaded_checkpoint: Optional[str]
@@ -364,28 +364,24 @@ class Method(Protocol):
         return None
 
     @abstractmethod
-    def optimize_embeddings(
-        self, 
-        dataset: Dataset,
-        embeddings: Optional[Sequence[np.ndarray]] = None
-    ) -> Iterable[OptimizeEmbeddingsOutput]:
+    def optimize_embedding(self, dataset: Dataset, *, embedding: Optional[np.ndarray] = None) -> OptimizeEmbeddingOutput:
         """
-        Optimize embeddings for each image in the dataset.
+        Optimize embeddings for single image (passed as dataset slice).
 
         Args:
             dataset: Dataset.
-            embeddings: Optional initial embeddings.
+            embedding: Optional initial embedding.
         """
         raise NotImplementedError()
 
     @abstractmethod
-    def render(self, cameras: Cameras, embeddings: Optional[Sequence[np.ndarray]] = None) -> Iterable[RenderOutput]:  # [h w c]
+    def render(self, camera: Cameras, *, options: Optional[Dict] = None) -> RenderOutput:  # [h w c]
         """
         Render images.
 
         Args:
             cameras: Cameras.
-            embeddings: Optional image embeddings.
+            options: Render options
         """
         raise NotImplementedError()
 
@@ -415,10 +411,10 @@ class EvaluationProtocol(Protocol):
     def get_name(self) -> str:
         ...
         
-    def render(self, method: Method, dataset: Dataset) -> Iterable[RenderOutput]:
+    def render(self, method: Method, dataset: Dataset) -> RenderOutput:
         ...
 
-    def evaluate(self, predictions: Iterable[RenderOutput], dataset: Dataset) -> Iterable[Dict[str, Union[float, int]]]:
+    def evaluate(self, predictions: RenderOutput, dataset: Dataset) -> Dict[str, Union[float, int]]:
         ...
 
     def accumulate_metrics(self, metrics: Iterable[Dict[str, Union[float, int]]]) -> Dict[str, Union[float, int]]:
@@ -551,5 +547,3 @@ class Logger(Protocol):
                       images: Optional[List[np.ndarray]] = None, 
                       labels: Union[None, List[Dict[str, str]], List[str]] = None) -> None:
         ...
-
-

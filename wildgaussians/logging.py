@@ -11,8 +11,11 @@ from pathlib import Path
 import typing
 from typing import Optional, Union, List, Dict, Sequence, Any, cast
 from typing import TYPE_CHECKING
-from .utils import convert_image_dtype
 from .types import Logger, LoggerEvent
+from .utils import convert_image_dtype
+
+if TYPE_CHECKING:
+    import wandb.sdk.wandb_run
 
 
 def _flatten_simplify_hparams(hparams: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
@@ -39,7 +42,6 @@ def _flatten_simplify_hparams(hparams: Dict[str, Any], prefix: str = "") -> Dict
         else:
             flat[k] = v
     return flat
-
 
 class BaseLoggerEvent(LoggerEvent):
     def add_scalar(self, tag: str, value: Union[float, int]) -> None:
@@ -134,6 +136,105 @@ class BaseLogger(Logger):
         raise NotImplementedError()
 
 
+class WandbLoggerEvent(BaseLoggerEvent):
+    def __init__(self, commit):
+        self._commit: Dict[str, Any] = commit
+
+    def add_scalar(self, tag: str, value: Union[float, int]) -> None:
+        self._commit[tag] = value
+
+    def add_text(self, tag: str, text: str) -> None:
+        self._commit[tag] = text
+
+    def add_image(self, tag: str, image: np.ndarray, display_name: Optional[str] = None, description: Optional[str] = None, **kwargs) -> None:
+        import wandb
+        self._commit[tag] = [wandb.Image(image, caption=description)]
+
+    def add_histogram(self, tag: str, values: np.ndarray, *, num_bins: Optional[int] = None) -> None:
+        import wandb
+        if num_bins is not None:
+            self._commit[tag] = wandb.Histogram(cast(Any, values), num_bins=num_bins)
+        else:
+            self._commit[tag] = wandb.Histogram(cast(Any, values))
+
+    def add_embedding(self, tag: str, embeddings: np.ndarray, *, 
+                      images: Optional[List[np.ndarray]] = None, 
+                      labels: Union[None, List[Dict[str, str]], List[str]] = None) -> None:
+        import wandb
+        table = wandb.Table([])
+        table.add_column("embedding", embeddings)
+        if labels is not None:
+            if isinstance(labels[0], dict):
+                for key in labels[0].keys():
+                    table.add_column(key, [cast(dict, label)[key] for label in labels])
+            else:
+                table.add_column("label", labels)
+        if images is not None:
+            table.add_column("image", [wandb.Image(image) for image in images])
+        self._commit[tag] = table
+
+    def add_plot(self, tag: str, *data: np.ndarray, 
+                 axes_labels: Optional[Sequence[str]] = None, 
+                 title: Optional[str] = None, 
+                 colors: Optional[Sequence[np.ndarray]] = None, 
+                 labels: Optional[Sequence[str]] = None, **kwargs) -> None:
+        if len(data) == 0 or data[0].shape[-1] != 2 or colors is not None:
+            # Not supported by WandbLogger
+            return super().add_plot(tag, *data, axes_labels=axes_labels, title=title, colors=colors, labels=labels, **kwargs)
+
+        import wandb
+
+        if colors is not None:
+            warnings.warn("WandbLogger does not support colors for add_plot, ignoring them")
+
+        xlabel, ylabel = axes_labels or ["x", "y"]
+        if len(data) == 1:
+            table = wandb.Table(data=[[x, y] for x, y in data[0]], columns=[xlabel, ylabel])
+            self._commit[tag] = wandb.plot.line(  # type: ignore
+                table,
+                x=xlabel,
+                y=ylabel,
+                title=title
+            )
+        else:
+            self._commit[tag] = wandb.plot.line_series(  # type: ignore
+                [x[:, 0] for x in data],
+                [x[:, 1] for x in data],
+                keys=labels,
+                title=title,
+                xname=xlabel,
+            )
+    
+
+class WandbLogger(BaseLogger):
+    def __init__(self, output: Union[str, Path], **kwargs):
+        # wandb does not support python 3.7, therefore, we patch it
+        try:
+            from typing import Literal
+        except ImportError:
+            from typing_extensions import Literal
+            typing.Literal = Literal  # type: ignore
+                    
+        import wandb
+        wandb_run: "wandb.sdk.wandb_run.Run" = typing.cast(
+            "wandb.sdk.wandb_run.Run", 
+            wandb.init(dir=str(output), **kwargs))
+        self._wandb_run = wandb_run
+        self._wandb = wandb
+
+    @contextlib.contextmanager
+    def add_event(self, step: int):
+        commit = {}
+        yield WandbLoggerEvent(commit)
+        self._wandb_run.log(commit, step=step)
+
+    def add_hparams(self, hparams: Dict[str, Any]):
+        self._wandb_run.config.update(_flatten_simplify_hparams(hparams))
+
+    def __str__(self):
+        return "wandb"
+
+
 if TYPE_CHECKING:
     _ConcatLoggerEventBase = LoggerEvent
 else:
@@ -183,6 +284,7 @@ class ConcatLogger(BaseLogger):
 
 class TensorboardLoggerEvent(BaseLoggerEvent):
     def __init__(self, logdir, summaries, step):
+        os.makedirs(logdir, exist_ok=True)
         self._step = step
         self._logdir = logdir
         self._summaries = summaries
@@ -249,8 +351,8 @@ class TensorboardLoggerEvent(BaseLoggerEvent):
         )  # type: ignore
         smd = SummaryMetadata(plugin_data=plugin_data)  # type: ignore
         tensor = TensorProto(
-            dtype="DT_STRING",
-            string_val=[text.encode("utf8")],
+            dtype="DT_STRING",  # type: ignore
+            string_val=[text.encode("utf8")],  # type: ignore
             tensor_shape=TensorShapeProto(dim=[TensorShapeProto.Dim(size=1)]),  # type: ignore
         )  # type: ignore
         self._summaries.append(Summary.Value(tag=tag, metadata=smd, tensor=tensor))  # type: ignore
@@ -423,13 +525,13 @@ class TensorboardLoggerEvent(BaseLoggerEvent):
 
             sum_sq = values.dot(values)
             return HistogramProto(  # type: ignore
-                min=values.min(),
-                max=values.max(),
-                num=len(values),
-                sum=values.sum(),
-                sum_squares=sum_sq,
-                bucket_limit=limits.tolist(),
-                bucket=counts.tolist(),
+                min=values.min(),  # type: ignore
+                max=values.max(),  # type: ignore
+                num=len(values),  # type: ignore
+                sum=values.sum(),  # type: ignore
+                sum_squares=sum_sq,  # type: ignore
+                bucket_limit=limits.tolist(),  # type: ignore
+                bucket=counts.tolist(),  # type: ignore
             )
 
         hist = make_histogram(values, bins, max_bins)
@@ -495,9 +597,9 @@ def _tensorboard_hparams(hparam_dict=None, metrics_list=None, hparam_domain_disc
 
             hps.append(
                 HParamInfo(  # type: ignore
-                    name=k,
-                    type=DataType.Value("DATA_TYPE_FLOAT64"),
-                    domain_discrete=domain_discrete,
+                    name=k,  # type: ignore
+                    type=DataType.Value("DATA_TYPE_FLOAT64"),  # type: ignore
+                    domain_discrete=domain_discrete,  # type: ignore
                 )
             )
             continue
@@ -517,9 +619,9 @@ def _tensorboard_hparams(hparam_dict=None, metrics_list=None, hparam_domain_disc
 
             hps.append(
                 HParamInfo(  # type: ignore
-                    name=k,
-                    type=DataType.Value("DATA_TYPE_STRING"),
-                    domain_discrete=domain_discrete,
+                    name=k,  # type: ignore
+                    type=DataType.Value("DATA_TYPE_STRING"),  # type: ignore
+                    domain_discrete=domain_discrete,  # type: ignore
                 )
             )
             continue
@@ -539,9 +641,9 @@ def _tensorboard_hparams(hparam_dict=None, metrics_list=None, hparam_domain_disc
 
             hps.append(
                 HParamInfo(  # type: ignore
-                    name=k,
-                    type=DataType.Value("DATA_TYPE_BOOL"),
-                    domain_discrete=domain_discrete,
+                    name=k,  # type: ignore
+                    type=DataType.Value("DATA_TYPE_BOOL"),  # type: ignore
+                    domain_discrete=domain_discrete,  # type: ignore
                 )
             )
             continue
@@ -587,10 +689,17 @@ def _tensorboard_hparams(hparam_dict=None, metrics_list=None, hparam_domain_disc
 
 
 class TensorboardLogger(BaseLogger):
-    def __init__(self, output: Union[str, Path], hparam_plugin_metrics: Optional[Sequence[str]] = None):
+    def __init__(self, 
+                 output: Union[str, Path], 
+                 hparam_plugin_metrics: Optional[Sequence[str]] = None,
+                 subdirectory: Optional[str] = "tensorboard"):
         from tensorboard.summary.writer.event_file_writer import EventFileWriter
+        output = str(output)
+        if subdirectory is not None:
+            output = os.path.join(output, subdirectory)
 
-        self._writer = EventFileWriter(str(output))
+        self._output = output
+        self._writer = EventFileWriter(output)
         self._hparam_plugin_metrics = hparam_plugin_metrics or []
 
     @contextlib.contextmanager
