@@ -26,14 +26,14 @@ We demonstrate that WildGaussians matches the real-time rendering speed of 3DGS 
 </p>
 <br>
 
-> <b>:dizzy:	NEWS: WildGaussians is now integrated into <a href="https://jkulhanek.com/nerfbaselines">NerfBaselines</a>. Checkout the results here: https://jkulhanek.com/nerfbaselines/phototourism</b>
+> <b>:dizzy:	NEWS: WildGaussians is now integrated into <a href="https://nerfbaselines.github.io">NerfBaselines</a>. Checkout the results here: https://nerfbaselines.github.io/phototourism</b>
 
 
 ## Installation
-We offer two ways to install the method: local installation (through a conda environment) and installation from [NerfBaselines](https://jkulhanek.com/nerfbaselines), where multiple backends (conda,docker,apptainer) can be selected.
+We offer two ways to install the method: local installation (through a conda environment) and installation from [NerfBaselines](https://nerfbaselines.github.io), where multiple backends (conda,docker,apptainer) can be selected.
 
 ### Use NerfBaselines
-WildGaussians is already included in the newest release of [NerfBaselines](https://jkulhanek.com/nerfbaselines).
+WildGaussians is already included in the newest release of [NerfBaselines](https://nerfbaselines.github.io).
 If you don't have NerfBaselines installed, you can install it by running:
 ```bash
 conda create -n nb python=3.11
