@@ -10,6 +10,8 @@
     <a href="https://people.inf.ethz.ch/marc.pollefeys/">Marc Pollefeys</a>
     ·
     <a href="https://tsattler.github.io/">Torsten Sattler</a>
+  </p><p align="center">
+    <b><i>NeurIPS 2024</i></b>
   </p>
   <h3 align="center"><a href="https://arxiv.org/pdf/2407.08447">📄 Paper</a> | <a href="https://wild-gaussians.github.io/">🌐 Project Page</a></h3>
   <div align="center"></div>
