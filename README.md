@@ -46,7 +46,7 @@ pip install nerfbaselines>=1.2.0
 ### Local installation
 Clone the repository and create a `python == 3.11` Anaconda environment with CUDA toolkit 11.8 installed using
 ```bash
-git clone git@github.com:jkulhanek/wild-gaussians.git
+git clone https://github.com/jkulhanek/wild-gaussians.git
 cd wild-gaussians
 
 conda create -y -n wg python=3.11
