@@ -142,7 +142,7 @@ If you find our code or paper useful, please cite:
 @article{kulhanek2024wildgaussians,
   title={WildGaussians: 3D Gaussian Splatting in the Wild},
   author={Kulhanek, Jonas and Peng, Songyou and Kukelova, Zuzana and Pollefeys, Marc and Sattler, Torsten},
-  journal={arXiv},
+  journal={NeurIPS},
   year={2024}
 }
 ```
