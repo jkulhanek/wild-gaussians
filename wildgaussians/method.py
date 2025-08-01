@@ -1717,13 +1717,13 @@ class WildGaussians(Method):
             torch.from_numpy(np.moveaxis(convert_image_dtype(img, np.float32), -1, 0)) for img in train_dataset["images"]
         ]
         self.train_sampling_masks = None
-        if train_dataset["sampling_masks"] is not None:
+        if train_dataset["masks"] is not None:
             self.train_sampling_masks = [
-                torch.from_numpy(convert_image_dtype(img, np.float32)[None]) for img in train_dataset["sampling_masks"]
+                torch.from_numpy(convert_image_dtype(img, np.float32)[None]) for img in train_dataset["masks"]
             ]
         # Clear memory
         train_dataset["images"] = None  # type: ignore
-        train_dataset["sampling_masks"] = None  # type: ignore
+        train_dataset["masks"] = None  # type: ignore
 
         # Setup model
         if self.checkpoint is None:
@@ -1773,7 +1773,7 @@ class WildGaussians(Method):
             optimizer = torch.optim.Adam([appearance_embedding_param], lr=self.config.appearance_embedding_optim_lr)
             
             gt_image = torch.tensor(convert_image_dtype(dataset["images"][i], np.float32), dtype=torch.float32, device=device).permute(2, 0, 1)
-            gt_mask = torch.tensor(convert_image_dtype(dataset["sampling_masks"][i], np.float32), dtype=torch.float32, device=device)[..., None].permute(2, 0, 1) if dataset["sampling_masks"] is not None else None
+            gt_mask = torch.tensor(convert_image_dtype(dataset["masks"][i], np.float32), dtype=torch.float32, device=device)[..., None].permute(2, 0, 1) if dataset["masks"] is not None else None
 
             with torch.enable_grad():
                 app_optim_type = self.config.appearance_optim_type
