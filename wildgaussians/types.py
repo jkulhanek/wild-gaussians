@@ -266,10 +266,10 @@ class _IncompleteDataset(TypedDict, total=True):
 
     image_paths: List[str]
     image_paths_root: str
-    sampling_mask_paths: Optional[List[str]]
-    sampling_mask_paths_root: Optional[str]
+    mask_paths: Optional[List[str]]
+    mask_paths_root: Optional[str]
     metadata: Dict
-    sampling_masks: Optional[Union[np.ndarray, List[np.ndarray]]]  # [N][H, W]
+    masks: Optional[Union[np.ndarray, List[np.ndarray]]]  # [N][H, W]
     points3D_xyz: Optional[np.ndarray]  # [M, 3]
     points3D_rgb: Optional[np.ndarray]  # [M, 3]
     images_points3D_indices: Optional[List[np.ndarray]]  # [N][<M]

@@ -207,7 +207,7 @@ def horizontal_half_dataset(dataset: Dataset, left: bool = True) -> Dataset:
             intrinsics=intrinsics,
             image_sizes=image_sizes),
         images=[get_slice(img, w) for img, w in zip(dataset["images"], image_sizes[:, 0])],
-        sampling_masks=[get_slice(mask, w) for mask, w in zip(dataset["sampling_masks"], image_sizes[:, 0])] if dataset["sampling_masks"] is not None else None,
+        masks=[get_slice(mask, w) for mask, w in zip(dataset["masks"], image_sizes[:, 0])] if dataset["masks"] is not None else None,
     )))
     return dataset
 

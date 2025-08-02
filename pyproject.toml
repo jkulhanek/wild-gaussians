@@ -23,7 +23,7 @@ local = [
     "mediapy",
     "requests",
     "tensorboard",
-    "nerfbaselines>=1.2.0",
+    "nerfbaselines>=1.2.10",
 ]
 
 [tool.setuptools.packages.find]

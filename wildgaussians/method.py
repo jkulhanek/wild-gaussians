@@ -1716,14 +1716,14 @@ class WildGaussians(Method):
         self.train_images = [
             torch.from_numpy(np.moveaxis(convert_image_dtype(img, np.float32), -1, 0)) for img in train_dataset["images"]
         ]
-        self.train_sampling_masks = None
-        if train_dataset["sampling_masks"] is not None:
-            self.train_sampling_masks = [
-                torch.from_numpy(convert_image_dtype(img, np.float32)[None]) for img in train_dataset["sampling_masks"]
+        self.train_masks = None
+        if train_dataset["masks"] is not None:
+            self.train_masks = [
+                torch.from_numpy(convert_image_dtype(img, np.float32)[None]) for img in train_dataset["masks"]
             ]
         # Clear memory
         train_dataset["images"] = None  # type: ignore
-        train_dataset["sampling_masks"] = None  # type: ignore
+        train_dataset["masks"] = None  # type: ignore
 
         # Setup model
         if self.checkpoint is None:
@@ -1773,7 +1773,7 @@ class WildGaussians(Method):
             optimizer = torch.optim.Adam([appearance_embedding_param], lr=self.config.appearance_embedding_optim_lr)
             
             gt_image = torch.tensor(convert_image_dtype(dataset["images"][i], np.float32), dtype=torch.float32, device=device).permute(2, 0, 1)
-            gt_mask = torch.tensor(convert_image_dtype(dataset["sampling_masks"][i], np.float32), dtype=torch.float32, device=device)[..., None].permute(2, 0, 1) if dataset["sampling_masks"] is not None else None
+            gt_mask = torch.tensor(convert_image_dtype(dataset["masks"][i], np.float32), dtype=torch.float32, device=device)[..., None].permute(2, 0, 1) if dataset["masks"] is not None else None
 
             with torch.enable_grad():
                 app_optim_type = self.config.appearance_optim_type
@@ -1915,12 +1915,12 @@ class WildGaussians(Method):
 
         # Loss
         gt_image = self.train_images[camera_id].to(device)
-        sampling_mask = self.train_sampling_masks[camera_id].to(device) if self.train_sampling_masks is not None else None 
+        mask = self.train_masks[camera_id].to(device) if self.train_masks is not None else None 
 
         # Apply mask
-        if sampling_mask is not None:
-            image = scale_grads(image, sampling_mask)
-            image_toned = scale_grads(image_toned, sampling_mask)
+        if mask is not None:
+            image = scale_grads(image, mask)
+            image_toned = scale_grads(image_toned, mask)
 
         uncertainty_loss = 0
         metrics = {}
@@ -1982,14 +1982,14 @@ class WildGaussians(Method):
                     (tensor * mask).sum() / mask.sum()
                 ).detach().cpu().item()
 
-            if sampling_mask is not None:
-                mask_percentage = sampling_mask.detach().mean().cpu().item()
+            if mask is not None:
+                mask_percentage = mask.detach().mean().cpu().item()
                 metrics["mask_percentage"] = mask_percentage
-                metrics["ssim_masked"] = _reduce_masked(ssim_value, sampling_mask)
-                metrics["mse_masked"] = masked_mse = _reduce_masked(mse, sampling_mask)
+                metrics["ssim_masked"] = _reduce_masked(ssim_value, mask)
+                metrics["mse_masked"] = masked_mse = _reduce_masked(mse, mask)
                 masked_psnr_value = 20 * math.log10(1.) - 10 * math.log10(masked_mse)
                 metrics["psnr_masked"] = masked_psnr_value
-                metrics["l1_loss_masked"] = _reduce_masked(Ll1, sampling_mask)
+                metrics["l1_loss_masked"] = _reduce_masked(Ll1, mask)
 
             # Densification
             if iteration < self.config.densify_until_iter:

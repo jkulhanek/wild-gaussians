@@ -352,7 +352,7 @@ def load_colmap_dataset(path: Union[Path, str],
         image_paths=image_paths,
         points3D_xyz=points3D_xyz,
         points3D_rgb=points3D_rgb,
-        sampling_mask_paths=None,
+        mask_paths=None,
         image_paths_root=str(images_path),
         metadata={
             "name": None,

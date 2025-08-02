@@ -283,19 +283,19 @@ def dataset_load_features(
 
     logging.debug(f"Loaded {len(images)} images")
 
-    if dataset["sampling_mask_paths"] is not None:
-        sampling_masks = []
-        for p in tqdm(dataset["sampling_mask_paths"], desc="loading sampling masks", dynamic_ncols=True):
-            sampling_mask = PIL.Image.open(p).convert("L")
+    if dataset["mask_paths"] is not None:
+        masks = []
+        for p in tqdm(dataset["mask_paths"], desc="loading sampling masks", dynamic_ncols=True):
+            mask = PIL.Image.open(p).convert("L")
             if resize is not None:
-                w, h = sampling_mask.size
+                w, h = mask.size
                 new_size = round(w*resize), round(h*resize)
-                sampling_mask = sampling_mask.resize(new_size, PIL.Image.Resampling.NEAREST)
+                mask = mask.resize(new_size, PIL.Image.Resampling.NEAREST)
                 warnings.warn(f"Resized sampling mask with a factor of {resize}")
 
-            sampling_masks.append(np.array(sampling_mask, dtype=np.uint8).astype(bool))
-        dataset["sampling_masks"] = sampling_masks  # padded_stack(sampling_masks)
-        logging.debug(f"Loaded {len(sampling_masks)} sampling masks")
+            masks.append(np.array(mask, dtype=np.uint8).astype(bool))
+        dataset["masks"] = masks  # padded_stack(masks)
+        logging.debug(f"Loaded {len(masks)} sampling masks")
 
     if resize is not None:
         # Replace all paths with the resized paths
@@ -303,11 +303,11 @@ def dataset_load_features(
             os.path.join("/resized", os.path.relpath(p, dataset["image_paths_root"])) 
             for p in dataset["image_paths"]]
         dataset["image_paths_root"] = "/resized"
-        if dataset["sampling_mask_paths"] is not None:
-            dataset["sampling_mask_paths"] = [
-                os.path.join("/resized-sampling-masks", os.path.relpath(p, dataset["sampling_mask_paths_root"])) 
-                for p in dataset["sampling_mask_paths"]]
-            dataset["sampling_mask_paths_root"] = "/resized-sampling-masks"
+        if dataset["mask_paths"] is not None:
+            dataset["mask_paths"] = [
+                os.path.join("/resized-masks", os.path.relpath(p, dataset["mask_paths_root"])) 
+                for p in dataset["mask_paths"]]
+            dataset["mask_paths_root"] = "/resized-masks"
 
     dataset["images"] = images  # padded_stack(images)
 
@@ -381,7 +381,7 @@ def dataset_index_select(dataset: TDataset, i: Union[slice, int, list, np.ndarra
     _dataset = cast(Dict, dataset.copy())
     _dataset.update({k: index(k, v) for k, v in dataset.items() if k not in {
         "image_paths_root", 
-        "sampling_mask_paths_root", 
+        "mask_paths_root", 
         "points3D_xyz", 
         "points3D_rgb", 
         "metadata"}})
@@ -394,9 +394,9 @@ def new_dataset(*,
                 image_paths: Sequence[str],
                 image_paths_root: Optional[str] = ...,
                 images: Union[np.ndarray, List[np.ndarray]],
-                sampling_mask_paths: Optional[Sequence[str]] = ...,
-                sampling_mask_paths_root: Optional[str] = None,
-                sampling_masks: Optional[Union[np.ndarray, List[np.ndarray]]] = ...,  # [N][H, W]
+                mask_paths: Optional[Sequence[str]] = ...,
+                mask_paths_root: Optional[str] = None,
+                masks: Optional[Union[np.ndarray, List[np.ndarray]]] = ...,  # [N][H, W]
                 points3D_xyz: Optional[np.ndarray] = ...,  # [M, 3]
                 points3D_rgb: Optional[np.ndarray] = ...,  # [M, 3]
                 images_points3D_indices: Optional[Sequence[np.ndarray]] = None,  # [N][<M]
@@ -410,9 +410,9 @@ def new_dataset(*,
                 image_paths: Sequence[str],
                 image_paths_root: Optional[str] = ...,
                 images: Literal[None] = None,
-                sampling_mask_paths: Optional[Sequence[str]] = ...,
-                sampling_mask_paths_root: Optional[str] = None,
-                sampling_masks: Optional[Union[np.ndarray, List[np.ndarray]]] = ...,  # [N][H, W]
+                mask_paths: Optional[Sequence[str]] = ...,
+                mask_paths_root: Optional[str] = None,
+                masks: Optional[Union[np.ndarray, List[np.ndarray]]] = ...,  # [N][H, W]
                 points3D_xyz: Optional[np.ndarray] = ...,  # [M, 3]
                 points3D_rgb: Optional[np.ndarray] = ...,  # [M, 3]
                 images_points3D_indices: Optional[Sequence[np.ndarray]] = None,  # [N][<M]
@@ -425,27 +425,27 @@ def new_dataset(*,
                 image_paths: Sequence[str],
                 image_paths_root: Optional[str] = None,
                 images: Optional[Union[np.ndarray, List[np.ndarray]]] = None,  # [N][H, W, 3]
-                sampling_mask_paths: Optional[Sequence[str]] = None,
-                sampling_mask_paths_root: Optional[str] = None,
-                sampling_masks: Optional[Union[np.ndarray, List[np.ndarray]]] = None,  # [N][H, W]
+                mask_paths: Optional[Sequence[str]] = None,
+                mask_paths_root: Optional[str] = None,
+                masks: Optional[Union[np.ndarray, List[np.ndarray]]] = None,  # [N][H, W]
                 points3D_xyz: Optional[np.ndarray] = None,  # [M, 3]
                 points3D_rgb: Optional[np.ndarray] = None,  # [M, 3]
                 images_points3D_indices: Optional[Sequence[np.ndarray]] = None,  # [N][<M]
                 metadata: Dict) -> Union[UnloadedDataset, Dataset]:
     if image_paths_root is None:
         image_paths_root = os.path.commonpath(image_paths)
-    if sampling_mask_paths_root is None and sampling_mask_paths is not None:
-        sampling_mask_paths_root = os.path.commonpath(sampling_mask_paths)
+    if mask_paths_root is None and mask_paths is not None:
+        mask_paths_root = os.path.commonpath(mask_paths)
     if image_paths_root is None:
         image_paths_root = os.path.commonpath(image_paths)
     return UnloadedDataset(
         cameras=cameras,
         image_paths=list(image_paths),
-        sampling_mask_paths=list(sampling_mask_paths) if sampling_mask_paths is not None else None,
-        sampling_mask_paths_root=sampling_mask_paths_root,
+        mask_paths=list(mask_paths) if mask_paths is not None else None,
+        mask_paths_root=mask_paths_root,
         image_paths_root=image_paths_root,
         images=images,
-        sampling_masks=sampling_masks,
+        masks=masks,
         points3D_xyz=points3D_xyz,
         points3D_rgb=points3D_rgb,
         images_points3D_indices=list(images_points3D_indices) if images_points3D_indices is not None else None,
